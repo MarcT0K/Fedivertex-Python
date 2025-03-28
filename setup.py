@@ -8,8 +8,10 @@ setup(
     description="Interface to download and interact with the Fediverse Graph Dataset",
     packages=find_packages(),
     license="GPLv3",
-    python_requires=">=3.8",
+    python_requires=">=3.10",  # To be compatible with mlcroissant
     install_requires=[
+        "numpy<1.26",  # To be compatible with mlcroissant
+        "pandas",
         "mlcroissant",
         "networkx",
     ],
