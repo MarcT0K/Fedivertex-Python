@@ -18,6 +18,8 @@ We provide graphs using the [NetworkX](https://networkx.org/) format.
 
 **Example**:
 ```python3
+    from fediverse_graphs import GraphLoader
+
     loader = GraphLoader()
     graph = loader.get_graph(software="peertube", graph_type="federation", date="20250324")
     graph = loader.get_graph(software="peertube", graph_type="federation") # Loads the most recent graph
@@ -34,6 +36,8 @@ We provide this information using a [Pandas](https://pandas.pydata.org/) datafra
 **Example**:
 
 ```python3
+    from fediverse_graphs import GraphLoader
+
     loader = GraphLoader()
     graph = loader.get_graph_metadata(software="peertube", graph_type="federation", date="20250324")
     graph = loader.get_graph_metadata(software="peertube", graph_type="federation") # Loads the most recent graph
@@ -44,6 +48,8 @@ We provide this information using a [Pandas](https://pandas.pydata.org/) datafra
 Finally, we provide a few utility functions:
 
 ```python3
+    from fediverse_graphs import GraphLoader
+
     loader = GraphLoader()
     loader.list_all_software()
     loader.list_graph_types("peertube")
