@@ -1,11 +1,16 @@
 from setuptools import setup, find_packages
+from pathlib import Path
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="fediverse-graphs",
-    version="0.0.1",
+    version="0.0.2",
     author="Marc DAMIE",
     author_email="marc.damie@inria.fr",
     description="Interface to download and interact with the Fediverse Graph Dataset",
+    long_description=long_description,
     packages=find_packages(),
     license="GPLv3",
     python_requires=">=3.10",  # To be compatible with mlcroissant
