@@ -4,6 +4,7 @@ from typing import List
 import mlcroissant as mlc
 import networkx as nx
 import pandas as pd
+from tqdm import tqdm
 
 
 class GraphLoader:
@@ -85,15 +86,15 @@ class GraphLoader:
         csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
         records = self.dataset.records(csv_file)
 
-        G = nx.DiGraph()
+        graph = nx.DiGraph()
 
-        for record in records:
+        for record in tqdm(records, desc="Building the graph"):
             source = record[csv_file + "/Source"].decode()
             target = record[csv_file + "/Target"].decode()
             weight = record[csv_file + "/Weight"]
-            G.add_edge(source, target, weight=weight)
+            graph.add_edge(source, target, weight=weight)
 
-        return G
+        return graph
 
     def get_graph_metadata(
         self, software: str, graph_type: str, date: str = "latest"

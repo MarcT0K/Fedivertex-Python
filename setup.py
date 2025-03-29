@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="fediverse-graphs",
-    version="0.0.1",
+    version="0.9.0",
     author="Marc DAMIE",
     author_email="marc.damie@inria.fr",
     description="Interface to download and interact with the Fediverse Graph Dataset",
@@ -14,6 +14,7 @@ setup(
         "pandas",
         "mlcroissant",
         "networkx",
+        "tqdm",
     ],
     extras_require={"test": ["pytest", "pytest-coverage"]},
 )
