@@ -68,10 +68,10 @@ def test_get_graph():
 
             assert graph.number_of_edges() == len(list(records))
 
-    # Check graph consistency TODO
-    # peertube_graph = loader.get_graph("peertube", "federation", "20250324")
-    # assert peertube_graph.number_of_edges() == 33019
-    # assert peertube_graph.number_of_nodes() == 883
+    # Check graph consistency
+    peertube_graph = loader.get_graph("peertube", "federation", "20250324")
+    assert peertube_graph.number_of_edges() == 19171
+    assert peertube_graph.number_of_nodes() == 839
 
 
 def test_get_graph_metadata():
