@@ -10,10 +10,10 @@ class GraphLoader:
         "bookwyrm": ["federation"],
         "friendica": ["federation"],
         "lemmy": ["federation", "cross_instance", "intra_instance"],
-        "mastodon": ["federation", "active_users"],
-        "misskey": ["federation", "active_users"],
+        "mastodon": ["federation", "active_user"],
+        "misskey": ["federation", "active_user"],
         "peertube": ["federation"],
-        "pleroma": ["federation", "active_users"],
+        "pleroma": ["federation", "active_user"],
     }
 
     def __init__(
@@ -37,7 +37,9 @@ class GraphLoader:
         dates = self.list_available_dates(software, graph_type)
 
         if len(dates) == 0:
-            raise ValueError("No graph available")
+            raise ValueError(  # pragma: no cover
+                f"No graph available for {software}+{graph_type}"
+            )
 
         return dates[-1]
 
@@ -79,7 +81,7 @@ class GraphLoader:
         csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
         records = self.dataset.records(csv_file)
 
-        G = nx.Graph()
+        G = nx.DiGraph()
 
         for record in records:
             source = record[csv_file + "/Source"].decode()
@@ -91,13 +93,13 @@ class GraphLoader:
 
     def get_graph_metadata(
         self, software: str, graph_type: str, date: str = "latest"
-    ) -> pd.Dataframe:
+    ) -> pd.DataFrame:
         self._check_input(software, graph_type)
 
         if date == "latest":
             date = self._fetch_latest_date(software, graph_type)
 
-        csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
+        csv_file = f"{software}/{graph_type}/{date}/instances.csv"
         records = self.dataset.records(csv_file)
 
         df = pd.DataFrame(records)

@@ -1,5 +1,5 @@
 from .main import GraphLoader
-from pkg_resources import get_distribution
+from importlib.metadata import version
 
-__version__ = get_distribution("fediverse-graphs").version
+__version__ = version("fediverse-graphs")
 __license__ = "GPLv3"

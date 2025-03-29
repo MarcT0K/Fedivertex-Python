@@ -10,9 +10,10 @@ setup(
     license="GPLv3",
     python_requires=">=3.10",  # To be compatible with mlcroissant
     install_requires=[
-        "numpy<1.26",  # To be compatible with mlcroissant
+        "numpy<2.0",  # To be compatible with mlcroissant
         "pandas",
         "mlcroissant",
         "networkx",
     ],
+    extras_require={"test": ["pytest", "pytest-coverage"]},
 )
