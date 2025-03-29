@@ -1,3 +1,4 @@
+import json
 from types import NoneType
 from typing import List
 import mlcroissant as mlc
@@ -20,7 +21,12 @@ class GraphLoader:
         self,
         url="https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset/croissant/download",
     ):
-        self.dataset = mlc.Dataset(jsonld=url)
+        try:
+            self.dataset = mlc.Dataset(jsonld=url)
+        except json.JSONDecodeError as err:
+            raise SystemError(
+                "Unexpected error from Croissant (try to empty Croissant's cache in ~/.cache/croissant)"
+            ) from err
 
     def _check_input(self, software: str, graph_type: str) -> NoneType:
         if software not in self.VALID_GRAPH_TYPES.keys():
@@ -37,9 +43,7 @@ class GraphLoader:
         dates = self.list_available_dates(software, graph_type)
 
         if len(dates) == 0:
-            raise ValueError(  # pragma: no cover
-                f"No graph available for {software}+{graph_type}"
-            )
+            raise ValueError(f"No graph available for {software}+{graph_type}")
 
         return dates[-1]
 
