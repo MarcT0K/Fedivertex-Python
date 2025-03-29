@@ -17,6 +17,7 @@ Three pieces of information are necessary to select a graph in the datatset: the
 We provide graphs using the [NetworkX](https://networkx.org/) format.
 
 **Example**:
+
 ```python3
     from fediverse_graphs import GraphLoader
 

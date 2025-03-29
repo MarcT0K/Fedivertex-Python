@@ -11,6 +11,7 @@ setup(
     author_email="marc.damie@inria.fr",
     description="Interface to download and interact with the Fediverse Graph Dataset",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=find_packages(),
     license="GPLv3",
     python_requires=">=3.10",  # To be compatible with mlcroissant
