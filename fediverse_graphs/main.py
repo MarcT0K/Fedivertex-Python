@@ -51,7 +51,7 @@ class GraphLoader:
     def list_all_software(self) -> List[str]:
         return list(self.VALID_GRAPH_TYPES.keys())
 
-    def list_valid_graphs(self, software: str) -> List[str]:
+    def list_graph_types(self, software: str) -> List[str]:
         if software not in self.VALID_GRAPH_TYPES.keys():
             raise ValueError(
                 f"Invalid software! Valid software: {list(self.VALID_GRAPH_TYPES.keys())}"

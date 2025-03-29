@@ -18,10 +18,10 @@ def test_basic_lists():
     assert loader.list_all_software() == software_list
 
     for software in software_list:
-        assert loader.list_valid_graphs(software) == loader.VALID_GRAPH_TYPES[software]
+        assert loader.list_graph_types(software) == loader.VALID_GRAPH_TYPES[software]
 
     with pytest.raises(ValueError):
-        loader.list_valid_graphs("NON-EXISTING SOFTWARE")
+        loader.list_graph_types("NON-EXISTING SOFTWARE")
 
 
 def test_available_dates():
