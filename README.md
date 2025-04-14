@@ -22,23 +22,12 @@ We provide graphs using the [NetworkX](https://networkx.org/) format.
     from fediverse_graphs import GraphLoader
 
     loader = GraphLoader()
-    graph = loader.get_graph(software="peertube", graph_type="federation", date="20250324")
-    graph = loader.get_graph(software="peertube", graph_type="federation") # Loads the most recent graph
+    graph = loader.get_graph(software="peertube", graph_type="follow", date="20250324")
+    graph = loader.get_graph(software="peertube", graph_type="follow") # Loads the most recent graph
 ```
 
 
 In each graph, we also provide metadata in the attributes of the graph nodes.
-
-
-**Example**:
-
-```python3
-    from fediverse_graphs import GraphLoader
-
-    loader = GraphLoader()
-    graph = loader.get_graph_metadata(software="peertube", graph_type="federation", date="20250324")
-    graph = loader.get_graph_metadata(software="peertube", graph_type="federation") # Loads the most recent graph
-```
 
 ## Utility functions
 
@@ -50,5 +39,5 @@ Finally, we provide a few utility functions:
     loader = GraphLoader()
     loader.list_all_software()
     loader.list_graph_types("peertube")
-    loader.list_available_dates("peertube", "federation")
+    loader.list_available_dates("peertube", "follow")
 ```
