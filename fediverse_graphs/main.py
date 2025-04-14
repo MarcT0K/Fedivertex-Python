@@ -198,7 +198,13 @@ class GraphLoader:
             graph.add_edge(source, target, weight=weight)
 
         if only_largest_component:
-            largest_cc = max(nx.connected_components(graph), key=len)
+            if graph_type in self.UNDIRECTED_GRAPHS:
+                largest_cc = max(nx.connected_components(graph), key=len)
+            else:
+                largest_cc = max(
+                    nx.strongly_connected_components(graph), key=len, default=()
+                )
+
             graph = graph.subgraph(largest_cc)
 
         return graph

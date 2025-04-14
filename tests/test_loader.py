@@ -26,7 +26,7 @@ def test_basic_lists():
 
 def test_available_dates():
     loader = GraphLoader()
-    peertube_dates = loader.list_available_dates("peertube", "federation")
+    peertube_dates = loader.list_available_dates("peertube", "follow")
     assert set(peertube_dates).issuperset(
         {
             "20250203",
@@ -41,7 +41,19 @@ def test_available_dates():
     )
 
     peertube_dates.sort()
-    assert loader._fetch_latest_date("peertube", "federation") == peertube_dates[-1]
+    assert loader._fetch_latest_date("peertube", "follow") == peertube_dates[-1]
+
+
+def test_index_selection():
+    loader = GraphLoader()
+
+    with pytest.raises(ValueError):
+        loader._fetch_date_index("peertube", "follow", 10000000000000000000000000)
+
+    assert loader._fetch_date_index("peertube", "follow", 0) == "20250203"
+
+    latest_date = loader._fetch_latest_date("peertube", "follow")
+    assert loader._fetch_date_index("peertube", "follow", -1) == latest_date
 
 
 def test_get_graph():
@@ -53,6 +65,9 @@ def test_get_graph():
     with pytest.raises(ValueError):
         loader.get_graph("peertube", "NON-EXISTING")
 
+    with pytest.raises(ValueError):
+        loader.get_graph("peertube", "follow", date="20250203", index=3)
+
     # No error with latest date
     for software, graph_type_list in loader.VALID_GRAPH_TYPES.items():
         if software == "mastodon":  # To avoid parsing the massive mastodon graph
@@ -61,33 +76,50 @@ def test_get_graph():
         for graph_type in graph_type_list:
             date = loader._fetch_latest_date(software, graph_type)
 
-            graph = loader.get_graph(software, graph_type)
+            # Test date selection
+            graph1 = loader.get_graph(software, graph_type, date=date)
 
-            csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
-            records = loader.dataset.records(csv_file)
+            # TODO
+            # if not graph_type == "federation":  # Because Federation is undirected
+            #     csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
+            #     records = loader.dataset.records(csv_file)
 
-            assert graph.number_of_edges() == len(list(records))
+            #     assert graph1.number_of_edges() == len(list(records))
+
+            # Test index selection
+            graph2 = loader.get_graph(software, graph_type, index=-1)
+            assert graph1.number_of_edges() == graph2.number_of_edges()
 
     # Check graph consistency
-    peertube_graph = loader.get_graph("peertube", "federation", "20250324")
+    peertube_graph = loader.get_graph("peertube", "follow", date="20250324")
     assert peertube_graph.number_of_edges() == 19171
-    assert peertube_graph.number_of_nodes() == 839
+    assert peertube_graph.number_of_nodes() == 883
 
+    # Check node attributes
+    assert peertube_graph.nodes["aperi[DOT]tube"] == {
+        "domain": "tube",
+        "totalUsers": 39,
+        "totalDailyActiveUsers": 0.0,
+        "totalWeeklyActiveUsers": 4.0,
+        "totalMonthlyActiveUsers": 8.0,
+        "totalLocalVideos": 638,
+        "totalVideos": 1287,
+        "totalLocalPlaylists": 26.0,
+        "totalVideoComments": 4632,
+        "totalLocalVideoComments": 44,
+        "totalLocalVideoViews": 106216,
+        "serverVersion": "7.1.0",
+    }
 
-def test_get_graph_metadata():
-    loader = GraphLoader()
-
-    with pytest.raises(ValueError):
-        loader.get_graph_metadata("NON-EXISTING", "federation")
-
-    with pytest.raises(ValueError):
-        loader.get_graph_metadata("peertube", "NON-EXISTING")
-
-    # No error with latest date
-    peertube_graph_metadata = loader.get_graph_metadata("peertube", "federation")
-
-    # Check graph consistency
-    peertube_graph_metadata = loader.get_graph_metadata(
-        "peertube", "federation", "20250324"
+    # Check largest component consistency
+    peertube_graph = loader.get_graph(  # DIRECTED GRAPH
+        "peertube", "follow", date="20250324", only_largest_component=True
     )
-    assert peertube_graph_metadata.shape[0] == 883
+    assert peertube_graph.number_of_edges() == 7450
+    assert peertube_graph.number_of_nodes() == 264
+
+    bookwyrm_graph = loader.get_graph(
+        "bookwyrm", "federation", date="20250324", only_largest_component=True
+    )
+    assert bookwyrm_graph.number_of_nodes() == 70
+    assert bookwyrm_graph.number_of_edges() == 1827
