@@ -3,7 +3,6 @@ from types import NoneType
 from typing import List, Optional
 import mlcroissant as mlc
 import networkx as nx
-import pandas as pd
 from tqdm import tqdm
 
 
@@ -14,7 +13,7 @@ class GraphLoader:
         "lemmy": ["federation", "cross_instance", "intra_instance"],
         "mastodon": ["federation", "active_user"],
         "misskey": ["federation", "active_user"],
-        "peertube": ["federation"],
+        "peertube": ["follow"],
         "pleroma": ["federation", "active_user"],
     }
     UNDIRECTED_GRAPHS = ["federation"]
@@ -170,18 +169,32 @@ class GraphLoader:
             # Fetch latest graph
             date = self._fetch_latest_date(software, graph_type)
 
-        csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
-        records = self.dataset.records(csv_file)
+        interactions_csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
+        interaction_records = self.dataset.records(interactions_csv_file)
+
+        instances_csv_file = f"{software}/{graph_type}/{date}/instances.csv"
+        instance_records = self.dataset.records(instances_csv_file)
 
         if graph_type in self.UNDIRECTED_GRAPHS:
             graph = nx.Graph()
         else:
             graph = nx.DiGraph()
 
-        for record in tqdm(records, desc="Building the graph"):
-            source = record[csv_file + "/Source"].decode()
-            target = record[csv_file + "/Target"].decode()
-            weight = record[csv_file + "/Weight"]
+        for record in tqdm(instance_records, desc="Adding the nodes"):
+            host = record[instances_csv_file + "/host"].decode()
+            graph.add_node(host)
+            graph.nodes[host]["domain"] = host.split("[DOT]")[-1]
+            for col, val in record.items():
+                col_name = col.split("/")[-1]
+                if type(val) == bytes:
+                    val = val.decode()
+                if col_name not in ["host", "Id", "Label"]:
+                    graph.nodes[host][col_name] = val
+
+        for record in tqdm(interaction_records, desc="Adding the edges"):
+            source = record[interactions_csv_file + "/Source"].decode()
+            target = record[interactions_csv_file + "/Target"].decode()
+            weight = record[interactions_csv_file + "/Weight"]
             graph.add_edge(source, target, weight=weight)
 
         if only_largest_component:
@@ -189,31 +202,3 @@ class GraphLoader:
             graph = graph.subgraph(largest_cc)
 
         return graph
-
-    def get_graph_metadata(
-        self, software: str, graph_type: str, date: str = "latest"
-    ) -> pd.DataFrame:
-        """Provide metadata (e.g., number of registered users) about the nodes in a graph.
-
-        :param software:
-        :type software: str
-        :param graph_type:
-        :type graph_type: str
-        :param date: date of the graph, defaults to "latest"
-        :type date: str, optional
-        :return: Pandas dataframe containing all the metadata available
-        :rtype: pd.DataFrame
-        """
-        self._check_input(software, graph_type)
-
-        if date == "latest":
-            date = self._fetch_latest_date(software, graph_type)
-
-        csv_file = f"{software}/{graph_type}/{date}/instances.csv"
-        records = self.dataset.records(csv_file)
-
-        df = pd.DataFrame(records)
-
-        # Sanitize the column name
-        df = df.rename(columns={col: col.split("/")[-1] for col in df.columns})
-        return df

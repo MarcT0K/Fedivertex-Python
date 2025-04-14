@@ -27,12 +27,8 @@ We provide graphs using the [NetworkX](https://networkx.org/) format.
 ```
 
 
-## Extracting graph metadata
+In each graph, we also provide metadata in the attributes of the graph nodes.
 
-Along with each graph, we also provide some metadata about the nodes composing the graph.
-Depending on the social media, the amount of information available varies.
-
-We provide this information using a [Pandas](https://pandas.pydata.org/) dataframes.
 
 **Example**:
 
