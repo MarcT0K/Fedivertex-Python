@@ -79,12 +79,11 @@ def test_get_graph():
             # Test date selection
             graph1 = loader.get_graph(software, graph_type, date=date)
 
-            # TODO
-            # if not graph_type == "federation":  # Because Federation is undirected
-            #     csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
-            #     records = loader.dataset.records(csv_file)
+            if not graph_type == "federation":  # Because Federation is undirected
+                csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
+                records = loader.dataset.records(csv_file)
 
-            #     assert graph1.number_of_edges() == len(list(records))
+                assert graph1.number_of_edges() == len(list(records))
 
             # Test index selection
             graph2 = loader.get_graph(software, graph_type, index=-1)
