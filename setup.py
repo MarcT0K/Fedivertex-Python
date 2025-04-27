@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="fedivertex",
-    version="0.9.3",
+    version="0.9.4",
     author="Marc DAMIE",
     author_email="marc.damie@inria.fr",
     description="Interface to download and interact with Fedivertex, the Fediverse Graph Dataset",
