@@ -210,6 +210,6 @@ class GraphLoader:
                     nx.strongly_connected_components(graph), key=len, default=()
                 )
 
-            graph = graph.subgraph(largest_cc)
+            graph = graph.subgraph(largest_cc).copy()
 
         return graph
