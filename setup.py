@@ -5,11 +5,11 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(
-    name="fediverse-graphs",
-    version="0.9.2",
+    name="fedivertex",
+    version="0.9.3",
     author="Marc DAMIE",
     author_email="marc.damie@inria.fr",
-    description="Interface to download and interact with the Fediverse Graph Dataset",
+    description="Interface to download and interact with Fedivertex, the Fediverse Graph Dataset",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),

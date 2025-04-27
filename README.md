@@ -1,6 +1,6 @@
-# Python API to interact with the Fediverse Graph Dataset
+# Python API to interact with Fedivertex, the Fediverse Graph Dataset
 
-This Python package provides a simple interface to interact with the Fediverse Graph dataset: https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset/data.
+This Python package provides a simple interface to interact with Fedivertex: https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset/data.
 Our package automatically downloads the dataset from Kaggle and loads graphs in a usable format (i.e., NetworkX).
 
 The Fediverse Graph dataset provides graphs for different decentralized social media.
