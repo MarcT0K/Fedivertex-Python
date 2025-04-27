@@ -1,6 +1,6 @@
 import pytest
 
-from fediverse_graphs import GraphLoader
+from fedivertex import GraphLoader
 
 
 def test_basic_lists():

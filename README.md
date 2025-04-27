@@ -19,7 +19,7 @@ We provide graphs using the [NetworkX](https://networkx.org/) format.
 **Example**:
 
 ```python3
-    from fediverse_graphs import GraphLoader
+    from fedivertex import GraphLoader
 
     loader = GraphLoader()
     graph = loader.get_graph(software="peertube", graph_type="follow", date="20250324")
@@ -34,7 +34,7 @@ In each graph, we also provide metadata in the attributes of the graph nodes.
 Finally, we provide a few utility functions:
 
 ```python3
-    from fediverse_graphs import GraphLoader
+    from fedivertex import GraphLoader
 
     loader = GraphLoader()
     loader.list_all_software()
