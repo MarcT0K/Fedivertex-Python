@@ -10,7 +10,12 @@ class GraphLoader:
     VALID_GRAPH_TYPES = {
         "bookwyrm": ["federation"],
         "friendica": ["federation"],
-        "lemmy": ["federation", "cross_instance", "intra_instance"],
+        "lemmy": [
+            "federation",
+            "federation_with_blocks",
+            "cross_instance",
+            "intra_instance",
+        ],
         "mastodon": ["federation", "active_user"],
         "misskey": ["federation", "active_user"],
         "peertube": ["follow"],
