@@ -142,6 +142,7 @@ class GraphLoader:
         index: Optional[int] = None,
         date: Optional[str] = None,
         only_largest_component: bool = False,
+        disable_tqdm: bool = False,
     ) -> nx.Graph:
         """Provide a graph for a given software and graph type.
         By default, we provide the latest graph but it can also be selected using the date or index.
@@ -156,6 +157,8 @@ class GraphLoader:
         :type date: Optional[str], optional
         :param only_largest_component: only returns the largest connected component, defaults to False
         :type only_largest_component: bool, optional
+        :param disable_tqdm: disables the TQDM progress bars, defaults to False
+        :type disable_tqdm: bool, optional
         :raises ValueError: if both a date and an index are provided.
         :return: a graph in the NetworkX format
         :rtype: nx.Graph
@@ -185,7 +188,9 @@ class GraphLoader:
         else:
             graph = nx.DiGraph()
 
-        for record in tqdm(instance_records, desc="Adding the nodes"):
+        for record in tqdm(
+            instance_records, desc="Adding the nodes", disable=disable_tqdm
+        ):
             host = record[instances_csv_file + "/host"].decode()
             graph.add_node(host)
             graph.nodes[host]["domain"] = host.split("[DOT]")[-1]
@@ -196,7 +201,9 @@ class GraphLoader:
                 if col_name not in ["host", "Id", "Label"]:
                     graph.nodes[host][col_name] = val
 
-        for record in tqdm(interaction_records, desc="Adding the edges"):
+        for record in tqdm(
+            interaction_records, desc="Adding the edges", disable=disable_tqdm
+        ):
             source = record[interactions_csv_file + "/Source"].decode()
             target = record[interactions_csv_file + "/Target"].decode()
             weight = record[interactions_csv_file + "/Weight"]
