@@ -165,7 +165,7 @@ class GraphLoader:
         """
         self._check_input(software, graph_type)
 
-        if index and date:
+        if index is not None and date is not None:
             raise ValueError(
                 "You must provide either the date or the index of the graph, not both."
             )
@@ -176,6 +176,8 @@ class GraphLoader:
         if index is None and date is None:
             # Fetch latest graph
             date = self._fetch_latest_date(software, graph_type)
+
+        assert date is not None
 
         interactions_csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
         interaction_records = self.dataset.records(interactions_csv_file)

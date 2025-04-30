@@ -89,6 +89,21 @@ def test_get_graph():
             graph2 = loader.get_graph(software, graph_type, index=-1)
             assert graph1.number_of_edges() == graph2.number_of_edges()
 
+            ########### FURTHER TESTS ###############
+            available_dates = loader.list_available_dates(software, graph_type)
+            date = available_dates[0]
+            graph3 = loader.get_graph(software, graph_type, date=date)
+
+            if not graph_type == "federation":  # Because Federation is undirected
+                csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
+                records = loader.dataset.records(csv_file)
+
+                assert graph3.number_of_edges() == len(list(records))
+
+            # Test index selection
+            graph4 = loader.get_graph(software, graph_type, index=0)
+            assert graph3.number_of_edges() == graph4.number_of_edges()
+
     # Check graph consistency
     peertube_graph = loader.get_graph("peertube", "follow", date="20250324")
     assert peertube_graph.number_of_edges() == 19171
