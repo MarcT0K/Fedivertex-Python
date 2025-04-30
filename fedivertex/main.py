@@ -170,7 +170,7 @@ class GraphLoader:
                 "You must provide either the date or the index of the graph, not both."
             )
 
-        if index:
+        if index is not None:
             date = self._fetch_date_index(software, graph_type, index)
 
         if index is None and date is None:
