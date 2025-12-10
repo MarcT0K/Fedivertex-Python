@@ -3,6 +3,7 @@ from types import NoneType
 from typing import List, Optional
 import mlcroissant as mlc
 import networkx as nx
+import networkx_temporal as tx
 from tqdm import tqdm
 
 
@@ -139,11 +140,12 @@ class GraphLoader:
         self,
         software: str,
         graph_type: str,
+        graph: tx.TemporalGraph = None,
         index: Optional[int] = None,
         date: Optional[str] = None,
         only_largest_component: bool = False,
         disable_tqdm: bool = False,
-    ) -> nx.Graph:
+    ) -> tx.TemporalGraph:
         """Provide a graph for a given software and graph type.
         By default, we provide the latest graph but it can also be selected using the date or index.
 
@@ -185,23 +187,24 @@ class GraphLoader:
         instances_csv_file = f"{software}/{graph_type}/{date}/instances.csv"
         instance_records = self.dataset.records(instances_csv_file)
 
-        if graph_type in self.UNDIRECTED_GRAPHS:
-            graph = nx.Graph()
-        else:
-            graph = nx.DiGraph()
+        if graph is None:
+            if graph_type in self.UNDIRECTED_GRAPHS:
+                graph = tx.TemporalGraph()
+            else:
+                graph = tx.TemporalDiGraph()
 
         for record in tqdm(
             instance_records, desc="Adding the nodes", disable=disable_tqdm
         ):
             host = record[instances_csv_file + "/host"].decode()
             graph.add_node(host)
-            graph.nodes[host]["domain"] = host.split("[DOT]")[-1]
+            graph.node(host)["domain"] = host.split("[DOT]")[-1]
             for col, val in record.items():
                 col_name = col.split("/")[-1]
                 if type(val) == bytes:
                     val = val.decode()
                 if col_name not in ["host", "Id", "Label"]:
-                    graph.nodes[host][col_name] = val
+                    graph.node(host)[col_name] = val
 
         for record in tqdm(
             interaction_records, desc="Adding the edges", disable=disable_tqdm
@@ -209,7 +212,7 @@ class GraphLoader:
             source = record[interactions_csv_file + "/Source"].decode()
             target = record[interactions_csv_file + "/Target"].decode()
             weight = record[interactions_csv_file + "/Weight"]
-            graph.add_edge(source, target, weight=weight)
+            graph.add_edge(source, target, time=int(date), weight=weight)
 
         if only_largest_component:
             if graph_type in self.UNDIRECTED_GRAPHS:
