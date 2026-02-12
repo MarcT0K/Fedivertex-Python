@@ -25,10 +25,12 @@ class GraphLoader:
     }
     UNDIRECTED_GRAPHS = ["federation"]
 
-    def __init__(
-        self,
-        url="https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset/croissant/download",
-    ):
+    def __init__(self, light_version=True):
+        self.light_version = light_version
+        if self.light_version:
+            url = "https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset-reduced/croissant/download"
+        else:
+            url = "https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset/croissant/download"
         try:
             self.dataset = mlc.Dataset(jsonld=url)
         except json.JSONDecodeError as err:
@@ -56,6 +58,12 @@ class GraphLoader:
         if graph_type not in self.VALID_GRAPH_TYPES[software]:
             raise ValueError(
                 f"{graph_type} is not a valid graph type for {software}. Valid types: {self.VALID_GRAPH_TYPES[software]}"
+            )
+
+        if self.light_version and software == "mastodon" and graph_type == "federation":
+            raise ValueError(
+                f"The graph {software} {graph_type} is not included in the light version of Fedivertex\n"
+                "To download the full version, generate the dataset loader as follows: `GraphLoader(light_version=False)`"
             )
 
     def _fetch_date_index(self, software: str, graph_type: str, index: int) -> str:
