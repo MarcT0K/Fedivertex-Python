@@ -137,3 +137,39 @@ def test_get_graph():
     )
     assert bookwyrm_graph.number_of_nodes() == 70
     assert bookwyrm_graph.number_of_edges() == 1827
+
+
+def test_get_temporal_graph():
+    loader = GraphLoader()
+
+    with pytest.raises(ValueError):
+        loader.get_temporal_graph("NON-EXISTING", "federation")
+
+    with pytest.raises(ValueError):
+        loader.get_temporal_graph("peertube", "NON-EXISTING")
+
+    with pytest.raises(ValueError):
+        loader.get_temporal_graph(
+            "peertube", "follow", date=("20250203", "20250217"), index=(3, 7)
+        )
+
+    with pytest.raises(ValueError):
+        loader.get_temporal_graph("peertube", "follow", index=(-1, 7))
+
+    with pytest.raises(ValueError):
+        loader.get_temporal_graph("peertube", "follow", index=(3, 70000000000))
+
+    with pytest.raises(ValueError):
+        loader.get_temporal_graph("peertube", "follow", date=("20210203", "20210217"))
+
+    temporal_graph = loader.get_temporal_graph(
+        "peertube", "follow", date=("20250203", "20250617")
+    )
+    assert len(temporal_graph.temporal_nodes()) == 1157
+    assert len(temporal_graph.temporal_edges()) == 310695
+    assert temporal_graph.number_of_snapshots() == 20
+
+    temporal_graph = loader.get_temporal_graph("peertube", "follow", index=(0, 7))
+    assert len(temporal_graph.temporal_nodes()) == 991
+    assert len(temporal_graph.temporal_edges()) == 133852
+    assert temporal_graph.number_of_snapshots() == 8
