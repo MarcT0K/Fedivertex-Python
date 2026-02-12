@@ -20,6 +20,7 @@ setup(
         "numpy<2.0",  # To be compatible with mlcroissant
         "mlcroissant",
         "networkx",
+        "networkx-temporal",
         "tqdm",
     ],
     extras_require={"test": ["pytest", "pytest-coverage"]},
