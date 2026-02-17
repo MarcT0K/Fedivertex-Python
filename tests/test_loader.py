@@ -56,7 +56,7 @@ def test_index_selection():
     assert loader._fetch_date_index("peertube", "follow", -1) == latest_date
 
 
-def test_get_graph():
+def test_get_graph_errors():
     loader = GraphLoader()
 
     with pytest.raises(ValueError):
@@ -68,41 +68,71 @@ def test_get_graph():
     with pytest.raises(ValueError):
         loader.get_graph("peertube", "follow", date="20250203", index=3)
 
-    # No error with latest date
-    for software, graph_type_list in loader.VALID_GRAPH_TYPES.items():
-        if software == "mastodon":  # To avoid parsing the massive mastodon graph
+
+def _iter_software_graph():
+    loader = GraphLoader()
+    for software, graph_types in loader.VALID_GRAPH_TYPES.items():
+        if software == "mastodon":
             continue
+        for graph_type in graph_types:
+            if graph_type == "federation":
+                continue
+            yield software, graph_type
 
-        for graph_type in graph_type_list:
-            date = loader._fetch_latest_date(software, graph_type)
 
-            # Test date selection
-            graph1 = loader.get_graph(software, graph_type, date=date)
+@pytest.mark.parametrize("software,graph_type", list(_iter_software_graph()))
+def test_get_graph_selection(software, graph_type):
+    loader = GraphLoader()
 
-            if not graph_type == "federation":  # Because Federation is undirected
-                csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
-                records = loader.dataset.records(csv_file)
+    date = loader._fetch_latest_date(software, graph_type)
 
-                assert graph1.number_of_edges() == len(list(records))
+    # Test date selection
+    graph1 = loader.get_graph(software, graph_type, date=date)
 
-            # Test index selection
-            graph2 = loader.get_graph(software, graph_type, index=-1)
-            assert graph1.number_of_edges() == graph2.number_of_edges()
+    if not graph_type == "federation":  # Because Federation is undirected
+        csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
+        records = loader.dataset.records(csv_file)
 
-            ########### FURTHER TESTS ###############
-            available_dates = loader.list_available_dates(software, graph_type)
-            date = available_dates[0]
-            graph3 = loader.get_graph(software, graph_type, date=date)
+        assert graph1.number_of_edges() == len(list(records))
 
-            if not graph_type == "federation":  # Because Federation is undirected
-                csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
-                records = loader.dataset.records(csv_file)
+    # Test index selection
+    graph2 = loader.get_graph(software, graph_type, index=-1)
+    assert graph1.number_of_edges() == graph2.number_of_edges()
 
-                assert graph3.number_of_edges() == len(list(records))
+    available_dates = loader.list_available_dates(software, graph_type)
+    date = available_dates[0]
+    graph3 = loader.get_graph(software, graph_type, date=date)
 
-            # Test index selection
-            graph4 = loader.get_graph(software, graph_type, index=0)
-            assert graph3.number_of_edges() == graph4.number_of_edges()
+    graph4 = loader.get_graph(software, graph_type, index=0)
+    assert graph3.number_of_edges() == graph4.number_of_edges()
+
+
+def _iter_software_graph_date():
+    loader = GraphLoader()
+    for software, graph_types in loader.VALID_GRAPH_TYPES.items():
+        if software == "mastodon":
+            continue
+        for graph_type in graph_types:
+            if graph_type == "federation":
+                continue
+            for date in loader.list_available_dates(software, graph_type):
+                yield software, graph_type, date
+
+
+@pytest.mark.parametrize("software,graph_type,date", list(_iter_software_graph_date()))
+def test_get_graph_sizes(software, graph_type, date):
+    loader = GraphLoader()
+
+    graph = loader.get_graph(software, graph_type, date=date)
+    csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
+    records = list(loader.dataset.records(csv_file))
+
+    assert graph.number_of_edges() == len(records)  # Verify that we load all the edges
+    # NB: an error can also occur in case of data cleaning issue in the dataset
+
+
+def test_graph_consistency():
+    loader = GraphLoader()
 
     # Check graph consistency
     peertube_graph = loader.get_graph("peertube", "follow", date="20250324")
