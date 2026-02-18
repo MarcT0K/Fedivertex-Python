@@ -1,8 +1,10 @@
 import json
 from types import NoneType
-from typing import List, Optional
+from typing import List, Optional, Tuple
+
 import mlcroissant as mlc
 import networkx as nx
+import networkx_temporal as tx
 from tqdm import tqdm
 
 
@@ -23,10 +25,12 @@ class GraphLoader:
     }
     UNDIRECTED_GRAPHS = ["federation"]
 
-    def __init__(
-        self,
-        url="https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset/croissant/download",
-    ):
+    def __init__(self, light_version=True):
+        self.light_version = light_version
+        if self.light_version:
+            url = "https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset-reduced/croissant/download"
+        else:
+            url = "https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset/croissant/download"
         try:
             self.dataset = mlc.Dataset(jsonld=url)
         except json.JSONDecodeError as err:
@@ -54,6 +58,12 @@ class GraphLoader:
         if graph_type not in self.VALID_GRAPH_TYPES[software]:
             raise ValueError(
                 f"{graph_type} is not a valid graph type for {software}. Valid types: {self.VALID_GRAPH_TYPES[software]}"
+            )
+
+        if self.light_version and software == "mastodon" and graph_type == "federation":
+            raise ValueError(
+                f"The graph {software} {graph_type} is not included in the light version of Fedivertex\n"
+                "To download the full version, generate the dataset loader as follows: `GraphLoader(light_version=False)`"
             )
 
     def _fetch_date_index(self, software: str, graph_type: str, index: int) -> str:
@@ -198,7 +208,7 @@ class GraphLoader:
             graph.nodes[host]["domain"] = host.split("[DOT]")[-1]
             for col, val in record.items():
                 col_name = col.split("/")[-1]
-                if type(val) == bytes:
+                if type(val) is bytes:
                     val = val.decode()
                 if col_name not in ["host", "Id", "Label"]:
                     graph.nodes[host][col_name] = val
@@ -222,3 +232,96 @@ class GraphLoader:
             graph = graph.subgraph(largest_cc).copy()
 
         return graph
+
+    def get_temporal_graph(
+        self,
+        software: str,
+        graph_type: str,
+        index: Optional[Tuple[int, int]] = None,
+        date: Optional[Tuple[str, str]] = None,
+        disable_tqdm: bool = False,
+    ) -> tx.TemporalGraph:
+        """Provide a graph for a given software and graph type.
+        By default, we provide the latest graph but it can also be selected using the date or index.
+
+        :param software:
+        :type software: str
+        :param graph_type:
+        :type graph_type: str
+        :param index: index range for the graphs (bounds are included), defaults to None
+        :type index: Optional[Tuple[int, int]], optional
+        :param date: date range for the graphs (bounds are included), defaults to None
+        :type date: Optional[Tuple[str, str]], optional
+        :param disable_tqdm: disables the TQDM progress bars, defaults to False
+        :type disable_tqdm: bool, optional
+        :raises ValueError: if both a date and an index are provided.
+        :return: a graph in the NetworkX format
+        :rtype: tx.TemporalGraph
+        """
+        self._check_input(software, graph_type)
+
+        if software == "mastodon" and graph_type == "federation":
+            resp = input(
+                """Each Mastodon Federation graph is 1GB large.\n
+                Storing the temporal graph might take a lot of space in memory,
+                are you sure you want to load it? [yes or no]"""
+            )
+            if resp.lower() not in ["yes", "y", "yeah"]:
+                raise KeyboardInterrupt
+
+        availables_dates = self.list_available_dates(software, graph_type)
+        selected_dates = []
+        if index is None and date is None:
+            # Fetch all graphs
+            selected_dates = availables_dates
+        elif index is not None and date is not None:
+            raise ValueError(
+                "You must provide either the date or the index range of the graph, not both."
+            )
+        elif index is not None:
+            if len(index) > 2:
+                raise ValueError("Incorrect format for the index range")
+            if index[0] > index[1]:
+                raise ValueError("Incorrect index range")
+            if index[0] < 0 or index[1] > len(availables_dates) - 1:
+                raise ValueError(
+                    f"Indices are out of the acceptable range (0,{len(availables_dates) - 1})"
+                )
+
+            selected_dates = availables_dates[index[0] : index[1] + 1]
+        else:  # date is not None:
+            assert date is not None
+            if len(date) > 2:
+                raise ValueError("Incorrect format for the date range")
+
+            min_date, max_date = date
+            try:
+                min_date = int(min_date)
+                max_date = int(max_date)
+            except ValueError as err:
+                raise ValueError("Invalid date format") from err
+
+            if (
+                min_date > int(availables_dates[-1])
+                or int(availables_dates[0]) > max_date
+            ):
+                raise ValueError(
+                    f"Indices not covering the available dates: ({availables_dates[0]},{availables_dates[-1]})"
+                )
+
+            for selected_date in availables_dates:
+                int_date = int(selected_date)
+                if min_date <= int_date and int_date <= max_date:
+                    selected_dates.append(selected_date)
+
+        selected_graphs = []
+        for selected_date in selected_dates:
+            graph = self.get_graph(
+                software=software,
+                graph_type=graph_type,
+                date=selected_date,
+                disable_tqdm=disable_tqdm,
+            )
+            selected_graphs.append(graph)
+
+        return tx.from_snapshots(selected_graphs)
