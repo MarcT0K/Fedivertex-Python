@@ -41,3 +41,23 @@ Finally, we provide a few utility functions:
     loader.list_graph_types("peertube")
     loader.list_available_dates("peertube", "follow")
 ```
+
+## Cite the dataset
+
+```
+@inproceedings{10.1145/3774904.3792868,
+   author = {Damie, Marc and Cyffers, Edwige},
+   title = {Fedivertex: a Graph Dataset based on Decentralized Social Media},
+   year = {2026},
+   isbn = {9798400723070},
+   publisher = {Association for Computing Machinery},
+   address = {New York, NY, USA},
+   url = {https://doi.org/10.1145/3774904.3792868},
+   doi = {10.1145/3774904.3792868},
+   booktitle = {Proceedings of the ACM Web Conference 2026},
+   pages = {8393–8396},
+   numpages = {4},
+   location = {United Arab Emirates},
+   series = {WWW '26}
+}
+```
