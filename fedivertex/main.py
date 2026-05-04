@@ -1,11 +1,14 @@
 import json
+import os
 from types import NoneType
 from typing import List, Optional, Tuple
 
-import mlcroissant as mlc
 import networkx as nx
 import networkx_temporal as tx
 from tqdm import tqdm
+
+from .cache import init_cache
+from .exceptions import InteractionError
 
 
 class GraphLoader:
@@ -25,18 +28,9 @@ class GraphLoader:
     }
     UNDIRECTED_GRAPHS = ["federation"]
 
-    def __init__(self, light_version=True):
+    def __init__(self, light_version=True, cache_dir=None):
         self.light_version = light_version
-        if self.light_version:
-            url = "https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset-reduced/croissant/download"
-        else:
-            url = "https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset/croissant/download"
-        try:
-            self.dataset = mlc.Dataset(jsonld=url)
-        except json.JSONDecodeError as err:
-            raise SystemError(
-                "Unexpected error from Croissant (try to empty Croissant's cache in ~/.cache/croissant)"
-            ) from err
+        self.CACHE_DIR = init_cache(light_version, cache_dir)
 
     def _check_input(self, software: str, graph_type: str) -> NoneType:
         """Verify that (software,graph type) combination exists
@@ -45,23 +39,23 @@ class GraphLoader:
         :type software: str
         :param graph_type: graph type
         :type graph_type: str
-        :raises ValueError: if the software does not exist in the dataset
-        :raises ValueError: if the graph type does not exist for a given software
+        :raises InteractionError: if the software does not exist in the dataset
+        :raises InteractionError: if the graph type does not exist for a given software
         :return: Nothing
         :rtype: NoneType
         """
         if software not in self.VALID_GRAPH_TYPES.keys():
-            raise ValueError(
+            raise InteractionError(
                 f"Invalid software! Valid software: {list(self.VALID_GRAPH_TYPES.keys())}"
             )
 
         if graph_type not in self.VALID_GRAPH_TYPES[software]:
-            raise ValueError(
+            raise InteractionError(
                 f"{graph_type} is not a valid graph type for {software}. Valid types: {self.VALID_GRAPH_TYPES[software]}"
             )
 
         if self.light_version and software == "mastodon" and graph_type == "federation":
-            raise ValueError(
+            raise InteractionError(
                 f"The graph {software} {graph_type} is not included in the light version of Fedivertex\n"
                 "To download the full version, generate the dataset loader as follows: `GraphLoader(light_version=False)`"
             )
@@ -76,20 +70,20 @@ class GraphLoader:
         :type graph_type: str
         :param index:
         :type index: int
-        :raises ValueError: if there is no graph available of the given type.
-        :raises ValueError: if the index is invalid
+        :raises InteractionError: if there is no graph available of the given type.
+        :raises InteractionError: if the index is invalid
         :return: date
         :rtype: str
         """
         dates = self.list_available_dates(software, graph_type)
 
         if len(dates) == 0:
-            raise ValueError(f"No graph available for {software}+{graph_type}")
+            raise InteractionError(f"No graph available for {software}+{graph_type}")
 
         try:
             return dates[index]
         except Exception as err:
-            raise ValueError("Invalid index: " + str(index)) from err
+            raise InteractionError("Invalid index: " + str(index)) from err
 
     def _fetch_latest_date(self, software: str, graph_type: str) -> str:
         """Returns the latest date available for a given graph.
@@ -98,14 +92,14 @@ class GraphLoader:
         :type software: str
         :param graph_type:
         :type graph_type: str
-        :raises ValueError: if there is no graph available of the given type.
+        :raises InteractionError: if there is no graph available of the given type.
         :return: date
         :rtype: str
         """
         dates = self.list_available_dates(software, graph_type)
 
         if len(dates) == 0:
-            raise ValueError(f"No graph available for {software}+{graph_type}")
+            raise InteractionError(f"No graph available for {software}+{graph_type}")
 
         return dates[-1]
 
@@ -114,7 +108,7 @@ class GraphLoader:
 
     def list_graph_types(self, software: str) -> List[str]:
         if software not in self.VALID_GRAPH_TYPES.keys():
-            raise ValueError(
+            raise InteractionError(
                 f"Invalid software! Valid software: {list(self.VALID_GRAPH_TYPES.keys())}"
             )
 
@@ -132,7 +126,7 @@ class GraphLoader:
         """
         self._check_input(software, graph_type)
 
-        record_sets = list(self.dataset.metadata.record_sets)
+        record_sets = list(self.dataset.metadata.record_sets)  # TODO
         dates = []
         for record_set in record_sets:
             if "interactions.csv" not in record_set.uuid:
@@ -169,14 +163,14 @@ class GraphLoader:
         :type only_largest_component: bool, optional
         :param disable_tqdm: disables the TQDM progress bars, defaults to False
         :type disable_tqdm: bool, optional
-        :raises ValueError: if both a date and an index are provided.
+        :raises InteractionError: if both a date and an index are provided.
         :return: a graph in the NetworkX format
         :rtype: nx.Graph
         """
         self._check_input(software, graph_type)
 
         if index is not None and date is not None:
-            raise ValueError(
+            raise InteractionError(
                 "You must provide either the date or the index of the graph, not both."
             )
 
@@ -190,10 +184,10 @@ class GraphLoader:
         assert date is not None
 
         interactions_csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
-        interaction_records = self.dataset.records(interactions_csv_file)
+        interaction_records = self.dataset.records(interactions_csv_file)  # TODO
 
         instances_csv_file = f"{software}/{graph_type}/{date}/instances.csv"
-        instance_records = self.dataset.records(instances_csv_file)
+        instance_records = self.dataset.records(instances_csv_file)  # TODO
 
         if graph_type in self.UNDIRECTED_GRAPHS:
             graph = nx.Graph()
@@ -254,7 +248,7 @@ class GraphLoader:
         :type date: Optional[Tuple[str, str]], optional
         :param disable_tqdm: disables the TQDM progress bars, defaults to False
         :type disable_tqdm: bool, optional
-        :raises ValueError: if both a date and an index are provided.
+        :raises InteractionError: if both a date and an index are provided.
         :return: a graph in the NetworkX format
         :rtype: tx.TemporalGraph
         """
@@ -275,16 +269,16 @@ class GraphLoader:
             # Fetch all graphs
             selected_dates = availables_dates
         elif index is not None and date is not None:
-            raise ValueError(
+            raise InteractionError(
                 "You must provide either the date or the index range of the graph, not both."
             )
         elif index is not None:
             if len(index) > 2:
-                raise ValueError("Incorrect format for the index range")
+                raise InteractionError("Incorrect format for the index range")
             if index[0] > index[1]:
-                raise ValueError("Incorrect index range")
+                raise InteractionError("Incorrect index range")
             if index[0] < 0 or index[1] > len(availables_dates) - 1:
-                raise ValueError(
+                raise InteractionError(
                     f"Indices are out of the acceptable range (0,{len(availables_dates) - 1})"
                 )
 
@@ -292,20 +286,20 @@ class GraphLoader:
         else:  # date is not None:
             assert date is not None
             if len(date) > 2:
-                raise ValueError("Incorrect format for the date range")
+                raise InteractionError("Incorrect format for the date range")
 
             min_date, max_date = date
             try:
                 min_date = int(min_date)
                 max_date = int(max_date)
-            except ValueError as err:
-                raise ValueError("Invalid date format") from err
+            except InteractionError as err:
+                raise InteractionError("Invalid date format") from err
 
             if (
                 min_date > int(availables_dates[-1])
                 or int(availables_dates[0]) > max_date
             ):
-                raise ValueError(
+                raise InteractionError(
                     f"Indices not covering the available dates: ({availables_dates[0]},{availables_dates[-1]})"
                 )
 

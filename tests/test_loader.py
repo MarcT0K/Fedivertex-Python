@@ -1,6 +1,7 @@
 import pytest
 
 from fedivertex import GraphLoader
+from fedivertex.exceptions import InteractionError
 
 
 def test_basic_lists():
@@ -20,7 +21,7 @@ def test_basic_lists():
     for software in software_list:
         assert loader.list_graph_types(software) == loader.VALID_GRAPH_TYPES[software]
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader.list_graph_types("NON-EXISTING SOFTWARE")
 
 
@@ -47,7 +48,7 @@ def test_available_dates():
 def test_index_selection():
     loader = GraphLoader()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader._fetch_date_index("peertube", "follow", 10000000000000000000000000)
 
     assert loader._fetch_date_index("peertube", "follow", 0) == "20250203"
@@ -59,13 +60,13 @@ def test_index_selection():
 def test_get_graph_errors():
     loader = GraphLoader()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader.get_graph("NON-EXISTING", "federation")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader.get_graph("peertube", "NON-EXISTING")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader.get_graph("peertube", "follow", date="20250203", index=3)
 
 
@@ -172,24 +173,24 @@ def test_graph_consistency():
 def test_get_temporal_graph():
     loader = GraphLoader()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader.get_temporal_graph("NON-EXISTING", "federation")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader.get_temporal_graph("peertube", "NON-EXISTING")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader.get_temporal_graph(
             "peertube", "follow", date=("20250203", "20250217"), index=(3, 7)
         )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader.get_temporal_graph("peertube", "follow", index=(-1, 7))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader.get_temporal_graph("peertube", "follow", index=(3, 70000000000))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InteractionError):
         loader.get_temporal_graph("peertube", "follow", date=("20210203", "20210217"))
 
     temporal_graph = loader.get_temporal_graph(
@@ -203,3 +204,8 @@ def test_get_temporal_graph():
     assert len(temporal_graph.temporal_nodes()) == 991
     assert len(temporal_graph.temporal_edges()) == 133852
     assert temporal_graph.number_of_snapshots() == 8
+
+
+def test_outdated_cache():
+    loader = GraphLoader()
+    raise NotImplementedError  # TODO
