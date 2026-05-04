@@ -1,4 +1,5 @@
 import os
+import shutil
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,14 +22,16 @@ DEFAULT_CACHE_DIR = user_cache_dir(
 DATASET_METADATA_URL = "https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset/croissant/download"
 LIGHT_DATASET_METADATA_URL = "https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset-reduced/croissant/download"
 DATASET_URL = (
-    "https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset/download"
+    "https://www.kaggle.com/api/v1/datasets/download/marcdamie/fediverse-graph-dataset"
 )
-LIGHT_DATASET_URL = (
-    "https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset-reduced/download"
-)
+LIGHT_DATASET_URL = "https://www.kaggle.com/api/v1/datasets/download/marcdamie/fediverse-graph-dataset-reduced"
 
 
-def download_from_http(url: str, filepath: Path): # Inspired from Croissant ML codebase
+def cache_subdir_name(light_version):
+    return "reduced" if light_version else "full"
+
+
+def download_from_http(url: str, filepath: Path):  # Inspired from Croissant ML codebase
     response = requests.get(
         url,
         stream=True,
@@ -39,7 +42,7 @@ def download_from_http(url: str, filepath: Path): # Inspired from Croissant ML c
     with (
         filepath.open("wb") as file,
         tqdm(
-            desc=f"Downloading {url}...",
+            desc="Downloading the dataset...",
             total=total,
             unit="iB",
             unit_scale=True,
@@ -50,17 +53,15 @@ def download_from_http(url: str, filepath: Path): # Inspired from Croissant ML c
             size = file.write(data)
             bar.update(size)
 
+
 def clear_cache(cache_dir=Path(DEFAULT_CACHE_DIR)):
     if os.path.exists(cache_dir):
-        os.rmdir(cache_dir)
+        shutil.rmtree(cache_dir)
+
 
 def check_for_update(light_dataset, cache_dir):
-    if light_dataset:
-        dataset_update_file = "last_update_reduced.txt"
-        metadata_url = LIGHT_DATASET_METADATA_URL
-    else:
-        dataset_update_file = "last_update_full.txt"
-        metadata_url = DATASET_METADATA_URL
+    dataset_update_file = f"last_update_{cache_subdir_name(light_dataset)}.txt"
+    metadata_url = LIGHT_DATASET_METADATA_URL if light_dataset else DATASET_METADATA_URL
 
     update_file_path = cache_dir / dataset_update_file
 
@@ -76,51 +77,52 @@ def check_for_update(light_dataset, cache_dir):
                     f"Could not retrieve dataset metadata (Invalid status {resp.status_code})"
                 )
             metadata = resp.json()
-            last_online_update = datetime.fromisoformat(metadata["dateModified"]).replace(tzinfo=timezone.utc)
+            last_online_update = datetime.fromisoformat(
+                metadata["dateModified"]
+            ).replace(tzinfo=timezone.utc)
         except requests.RequestException as err:
             raise DownloadError(
                 f"Could not retrieve dataset metadata ({str(err)})"
             ) from err
         except KeyError as err:
             raise DownloadError(
-                f"Could not retrieve dataset metadata (Missing 'dateModified' in the metadata)"
+                "Could not retrieve dataset metadata (Missing 'dateModified' in the metadata)"
             ) from err
 
         if last_local_update > last_online_update:
             print("Cache is up-to-date, no download necessary.")
             return False
-        else
+        else:
             print("Cache is outdated, download necessary.")
             return True
     else:
         print("No cache found, download necessary.")
         return True
 
+
 def download_dataset(light_dataset, cache_dir):
-    if light_dataset:
-        data_url = LIGHT_DATASET_URL
-        dataset_dir = "reduced"
-    else:
-        data_url = DATASET_URL
-        dataset_dir = "full"
+    data_url = LIGHT_DATASET_URL if light_dataset else DATASET_URL
 
     archive_path = cache_dir / "archive.zip"
-    dataset_path = cache_dir / dataset_dir
+    dataset_path = cache_dir / cache_subdir_name(light_version=light_dataset)
 
     download_from_http(data_url, archive_path)
 
-
     print("Decompressing the dataset...")
     with zipfile.ZipFile(archive_path) as zip:
-        zip.extractall(dataset_path)
+        zip.extractall(cache_dir)
+
+        # Rename the extracted folder to have a fixed name (without version)
+        roots = {Path(m).parts[0] for m in zip.namelist() if m.strip()}
+        if len(roots) == 1:
+            old_root = cache_dir / next(iter(roots))
+            old_root.rename(dataset_path)
 
     os.remove(archive_path)
 
+
 def create_update_date_file(light_dataset, cache_dir):
-    if light_dataset:
-        dataset_update_file = "last_update_reduced.txt"
-    else:
-        dataset_update_file = "last_update_full.txt"
+    dataset_update_file = f"last_update_{cache_subdir_name(light_dataset)}.txt"
 
     update_file_path = cache_dir / dataset_update_file
 
@@ -128,19 +130,20 @@ def create_update_date_file(light_dataset, cache_dir):
         date_now = datetime.now(timezone.utc).isoformat()
         update_file.write(date_now)
 
+
 def init_cache(light_dataset: bool, cache_dir: Optional[Path | str] = None) -> Path:
     if cache_dir is None:
         cache_dir = DEFAULT_CACHE_DIR
 
     cache_dir = Path(cache_dir)
 
-    if check_for_update(cache_dir=cache_dir,light_dataset=light_dataset):
-        clear_cache(cache_dir) # Remove existing cache files as outdated
+    if check_for_update(cache_dir=cache_dir, light_dataset=light_dataset):
+        clear_cache(cache_dir)  # Remove existing cache files as outdated
 
-        os.makedirs(cache_dir) # Recreate the cache
+        os.makedirs(cache_dir)  # Recreate the cache
 
-        download_dataset(cache_dir=cache_dir,light_dataset=light_dataset)
+        download_dataset(cache_dir=cache_dir, light_dataset=light_dataset)
 
-        create_update_date_file(cache_dir=cache_dir,light_dataset=light_dataset)
+        create_update_date_file(cache_dir=cache_dir, light_dataset=light_dataset)
 
     return cache_dir

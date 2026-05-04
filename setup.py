@@ -17,6 +17,7 @@ setup(
     license="GPLv3",
     python_requires=">=3.10",
     install_requires=[
+        "numpy<2.0",  # Necessary for networkx-temporal
         "networkx",
         "networkx-temporal",
         "platformdirs",

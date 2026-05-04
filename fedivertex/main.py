@@ -1,4 +1,4 @@
-import json
+import csv
 import os
 from types import NoneType
 from typing import List, Optional, Tuple
@@ -7,7 +7,7 @@ import networkx as nx
 import networkx_temporal as tx
 from tqdm import tqdm
 
-from .cache import init_cache
+from .cache import cache_subdir_name, init_cache
 from .exceptions import InteractionError
 
 
@@ -31,6 +31,7 @@ class GraphLoader:
     def __init__(self, light_version=True, cache_dir=None):
         self.light_version = light_version
         self.CACHE_DIR = init_cache(light_version, cache_dir)
+        self.SUB_DIR = cache_subdir_name(light_version)
 
     def _check_input(self, software: str, graph_type: str) -> NoneType:
         """Verify that (software,graph type) combination exists
@@ -125,17 +126,9 @@ class GraphLoader:
         :rtype: List[str]
         """
         self._check_input(software, graph_type)
+        graph_path = self.CACHE_DIR / software / graph_type
 
-        record_sets = list(self.dataset.metadata.record_sets)  # TODO
-        dates = []
-        for record_set in record_sets:
-            if "interactions.csv" not in record_set.uuid:
-                continue
-
-            software_i, graph_type_i, date_i, _file = record_set.uuid.split("/")
-            if software_i == software and graph_type_i == graph_type:
-                dates.append(date_i)
-
+        dates = list(os.listdir(graph_path))
         dates.sort()
         return dates
 
