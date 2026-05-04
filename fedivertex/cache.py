@@ -2,6 +2,7 @@ import os
 import shutil
 import zipfile
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from turtle import down
 from typing import Optional
@@ -25,6 +26,12 @@ DATASET_URL = (
     "https://www.kaggle.com/api/v1/datasets/download/marcdamie/fediverse-graph-dataset"
 )
 LIGHT_DATASET_URL = "https://www.kaggle.com/api/v1/datasets/download/marcdamie/fediverse-graph-dataset-reduced"
+
+
+class CacheStatus(Enum):
+    ABSENT = -1
+    OUTDATED = 0
+    UPTODATE = 1
 
 
 def cache_subdir_name(light_version):
@@ -91,13 +98,13 @@ def check_for_update(light_dataset, cache_dir):
 
         if last_local_update > last_online_update:
             print("Cache is up-to-date, no download necessary.")
-            return False
+            return CacheStatus.UPTODATE
         else:
             print("Cache is outdated, download necessary.")
-            return True
+            return CacheStatus.OUTDATED
     else:
         print("No cache found, download necessary.")
-        return True
+        return CacheStatus.ABSENT
 
 
 def download_dataset(light_dataset, cache_dir):
@@ -137,10 +144,12 @@ def init_cache(light_dataset: bool, cache_dir: Optional[Path | str] = None) -> P
 
     cache_dir = Path(cache_dir)
 
-    if check_for_update(cache_dir=cache_dir, light_dataset=light_dataset):
-        clear_cache(cache_dir)  # Remove existing cache files as outdated
+    cache_status = check_for_update(cache_dir=cache_dir, light_dataset=light_dataset)
+    if cache_status != CacheStatus.UPTODATE:
+        if cache_status == CacheStatus.OUTDATED:
+            clear_cache(cache_dir)
 
-        os.makedirs(cache_dir)  # Recreate the cache
+        os.makedirs(cache_dir, exist_ok=True)  # (Re)Create the cache if necessary
 
         download_dataset(cache_dir=cache_dir, light_dataset=light_dataset)
 
