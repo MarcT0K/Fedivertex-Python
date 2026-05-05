@@ -1,5 +1,6 @@
 import csv
 import os
+from pathlib import Path
 from types import NoneType
 from typing import List, Optional, Tuple
 
@@ -7,7 +8,7 @@ import networkx as nx
 import networkx_temporal as tx
 from tqdm import tqdm
 
-from .cache import cache_subdir_name, init_cache
+from .cache import load_dataset
 from .exceptions import InteractionError
 
 
@@ -29,9 +30,10 @@ class GraphLoader:
     UNDIRECTED_GRAPHS = ["federation"]
 
     def __init__(self, light_version=True, cache_dir=None):
-        self.light_version = light_version
-        self.CACHE_DIR = init_cache(light_version, cache_dir)
-        self.SUB_DIR = cache_subdir_name(light_version)
+        self.DATASET_INFO = load_dataset(light_version, cache_dir)
+
+    def _graph_dir(self, software: str, graph_type: str, date: str) -> Path:
+        return self.DATASET_INFO.dataset_dir / software / graph_type / date
 
     def _check_input(self, software: str, graph_type: str) -> NoneType:
         """Verify that (software,graph type) combination exists
@@ -55,7 +57,11 @@ class GraphLoader:
                 f"{graph_type} is not a valid graph type for {software}. Valid types: {self.VALID_GRAPH_TYPES[software]}"
             )
 
-        if self.light_version and software == "mastodon" and graph_type == "federation":
+        if (
+            self.DATASET_INFO.light_version
+            and software == "mastodon"
+            and graph_type == "federation"
+        ):
             raise InteractionError(
                 f"The graph {software} {graph_type} is not included in the light version of Fedivertex\n"
                 "To download the full version, generate the dataset loader as follows: `GraphLoader(light_version=False)`"
@@ -126,7 +132,7 @@ class GraphLoader:
         :rtype: List[str]
         """
         self._check_input(software, graph_type)
-        graph_path = self.CACHE_DIR / self.SUB_DIR / software / graph_type
+        graph_path = self.DATASET_INFO.dataset_dir / software / graph_type
 
         dates = list(os.listdir(graph_path))
         dates.sort()
@@ -182,12 +188,7 @@ class GraphLoader:
             graph = nx.DiGraph()
 
         instances_csv_file = (
-            self.CACHE_DIR
-            / self.SUB_DIR
-            / software
-            / graph_type
-            / date
-            / "instances.csv"
+            self._graph_dir(software, graph_type, date) / "instances.csv"
         )
         with open(instances_csv_file, "r", encoding="utf-8") as csvfile:
             record_reader = csv.DictReader(csvfile)
@@ -204,12 +205,7 @@ class GraphLoader:
                         graph.nodes[host][col_name] = val
 
         interactions_csv_file = (
-            self.CACHE_DIR
-            / self.SUB_DIR
-            / software
-            / graph_type
-            / date
-            / "interactions.csv"
+            self._graph_dir(software, graph_type, date) / "interactions.csv"
         )
 
         with open(interactions_csv_file, "r", encoding="utf-8") as csvfile:

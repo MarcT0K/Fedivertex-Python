@@ -1,11 +1,21 @@
 import os
+from pathlib import Path
 
 from fedivertex import GraphLoader
-from fedivertex.cache import clear_cache
+from fedivertex.cache import DEFAULT_CACHE_DIR, clear_default_cache
+
+
+def test_cache_removal():
+    cache_path = Path(DEFAULT_CACHE_DIR)
+    assert cache_path.exists()
+
+    clear_default_cache()
+
+    assert not cache_path.exists()
 
 
 def test_cache_status(capsys):
-    clear_cache()
+    clear_default_cache()
     _loader = GraphLoader()
     captured = capsys.readouterr()
     assert (
@@ -21,7 +31,7 @@ def test_cache_status(capsys):
         == captured.out
     )
 
-    update_file_path = loader.CACHE_DIR / "reduced" / "last_update.txt"
+    update_file_path = loader.DATASET_INFO.dataset_dir / "last_update.txt"
     os.remove(update_file_path)
     with open(update_file_path, "w") as update_file:
         update_file.write("INVALID DATA")
@@ -38,7 +48,7 @@ def test_cache_status(capsys):
 
     os.remove(update_file_path)
     with open(update_file_path, "w") as update_file:
-        update_file.write("2019-05-05T07:24:39.383197+00:00")
+        update_file.write("2016-04-24T12:08:29.887")
 
     _loader = GraphLoader()
     captured = capsys.readouterr()
@@ -46,4 +56,3 @@ def test_cache_status(capsys):
         "Cache found, checking for updates...\nCache is outdated, download necessary.\nDecompressing the dataset...\n"
         == captured.out
     )
-    del _loader
