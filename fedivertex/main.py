@@ -126,7 +126,7 @@ class GraphLoader:
         :rtype: List[str]
         """
         self._check_input(software, graph_type)
-        graph_path = self.CACHE_DIR / software / graph_type
+        graph_path = self.CACHE_DIR / self.SUB_DIR / software / graph_type
 
         dates = list(os.listdir(graph_path))
         dates.sort()
@@ -176,49 +176,63 @@ class GraphLoader:
 
         assert date is not None
 
-        interactions_csv_file = f"{software}/{graph_type}/{date}/interactions.csv"
-        interaction_records = self.dataset.records(interactions_csv_file)  # TODO
-
-        instances_csv_file = f"{software}/{graph_type}/{date}/instances.csv"
-        instance_records = self.dataset.records(instances_csv_file)  # TODO
-
         if graph_type in self.UNDIRECTED_GRAPHS:
             graph = nx.Graph()
         else:
             graph = nx.DiGraph()
 
-        for record in tqdm(
-            instance_records, desc="Adding the nodes", disable=disable_tqdm
-        ):
-            host = record[instances_csv_file + "/host"].decode()
-            graph.add_node(host)
-            graph.nodes[host]["domain"] = host.split("[DOT]")[-1]
-            for col, val in record.items():
-                col_name = col.split("/")[-1]
-                if type(val) is bytes:
-                    val = val.decode()
-                if col_name not in ["host", "Id", "Label"]:
-                    graph.nodes[host][col_name] = val
+        instances_csv_file = (
+            self.CACHE_DIR
+            / self.SUB_DIR
+            / software
+            / graph_type
+            / date
+            / "instances.csv"
+        )
+        with open(instances_csv_file, "r", encoding="utf-8") as csvfile:
+            record_reader = csv.DictReader(csvfile)
+            for record in tqdm(
+                record_reader, desc="Adding the nodes", disable=disable_tqdm
+            ):
+                host = record["host"]
+                graph.add_node(host)
+                graph.nodes[host]["domain"] = host.split("[DOT]")[-1]
+                for col, val in record.items():
+                    col_name = col.split("/")[-1]
 
-        for record in tqdm(
-            interaction_records, desc="Adding the edges", disable=disable_tqdm
-        ):
-            source = record[interactions_csv_file + "/Source"].decode()
-            target = record[interactions_csv_file + "/Target"].decode()
-            weight = record[interactions_csv_file + "/Weight"]
-            graph.add_edge(source, target, weight=weight)
+                    if col_name not in ["host", "Id", "Label"]:
+                        graph.nodes[host][col_name] = val
 
-        if only_largest_component:
-            if graph_type in self.UNDIRECTED_GRAPHS:
-                largest_cc = max(nx.connected_components(graph), key=len)
-            else:
-                largest_cc = max(
-                    nx.strongly_connected_components(graph), key=len, default=()
-                )
+        interactions_csv_file = (
+            self.CACHE_DIR
+            / self.SUB_DIR
+            / software
+            / graph_type
+            / date
+            / "interactions.csv"
+        )
 
-            graph = graph.subgraph(largest_cc).copy()
+        with open(interactions_csv_file, "r", encoding="utf-8") as csvfile:
+            record_reader = csv.DictReader(csvfile)
+            for record in tqdm(
+                record_reader, desc="Adding the edges", disable=disable_tqdm
+            ):
+                source = record["Source"]
+                target = record["Target"]
+                weight = record["Weight"]
+                graph.add_edge(source, target, weight=weight)
 
-        return graph
+            if only_largest_component:
+                if isinstance(graph, nx.DiGraph):
+                    largest_cc = max(
+                        nx.strongly_connected_components(graph), key=len, default=()
+                    )
+                else:
+                    largest_cc = max(nx.connected_components(graph), key=len)
+
+                graph = graph.subgraph(largest_cc).copy()
+
+            return graph
 
     def get_temporal_graph(
         self,

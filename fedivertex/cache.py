@@ -29,6 +29,7 @@ LIGHT_DATASET_URL = "https://www.kaggle.com/api/v1/datasets/download/marcdamie/f
 
 
 class CacheStatus(Enum):
+    CORRUPTED = -2
     ABSENT = -1
     OUTDATED = 0
     UPTODATE = 1
@@ -67,16 +68,18 @@ def clear_cache(cache_dir=Path(DEFAULT_CACHE_DIR)):
 
 
 def check_for_update(light_dataset, cache_dir):
-    dataset_update_file = f"last_update_{cache_subdir_name(light_dataset)}.txt"
     metadata_url = LIGHT_DATASET_METADATA_URL if light_dataset else DATASET_METADATA_URL
-
-    update_file_path = cache_dir / dataset_update_file
+    update_file_path = cache_dir / cache_subdir_name(light_dataset) / "last_update.txt"
 
     if os.path.exists(update_file_path):
-        print("Cache found, checking for updates...")
-        with open(update_file_path, "r", encoding="utf-8") as update_file:
-            last_local_update = datetime.fromisoformat(update_file.read())
+        try:
+            with open(update_file_path, "r", encoding="utf-8") as update_file:
+                last_local_update = datetime.fromisoformat(update_file.read())
+        except ValueError:
+            print("Cache corrupted (invalid update date), download necessary.")
+            return CacheStatus.CORRUPTED
 
+        print("Cache found, checking for updates...")
         try:
             resp = requests.get(metadata_url)
             if resp.status_code != 200:
@@ -129,9 +132,7 @@ def download_dataset(light_dataset, cache_dir):
 
 
 def create_update_date_file(light_dataset, cache_dir):
-    dataset_update_file = f"last_update_{cache_subdir_name(light_dataset)}.txt"
-
-    update_file_path = cache_dir / dataset_update_file
+    update_file_path = cache_dir / cache_subdir_name(light_dataset) / "last_update.txt"
 
     with open(update_file_path, "w", encoding="utf-8") as update_file:
         date_now = datetime.now(timezone.utc).isoformat()
@@ -143,13 +144,14 @@ def init_cache(light_dataset: bool, cache_dir: Optional[Path | str] = None) -> P
         cache_dir = DEFAULT_CACHE_DIR
 
     cache_dir = Path(cache_dir)
+    # Create the main cache directory if necessary
+    os.makedirs(cache_dir, exist_ok=True)
 
     cache_status = check_for_update(cache_dir=cache_dir, light_dataset=light_dataset)
     if cache_status != CacheStatus.UPTODATE:
-        if cache_status == CacheStatus.OUTDATED:
-            clear_cache(cache_dir)
-
-        os.makedirs(cache_dir, exist_ok=True)  # (Re)Create the cache if necessary
+        clear_cache(
+            cache_dir / cache_subdir_name(light_dataset)
+        )  # Clears the cache if exists
 
         download_dataset(cache_dir=cache_dir, light_dataset=light_dataset)
 
