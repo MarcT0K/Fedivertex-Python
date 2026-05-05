@@ -25,8 +25,7 @@ def test_get_graph_selection(software, graph_type):
 
     if not graph_type == "federation":  # Because Federation is undirected
         csv_file = (
-            loader.CACHE_DIR
-            / loader.SUB_DIR
+            loader.DATASET_INFO.dataset_dir
             / software
             / graph_type
             / date
@@ -69,8 +68,7 @@ def test_get_graph_sizes(software, graph_type, date):
 
     graph = loader.get_graph(software, graph_type, date=date)
     csv_file = (
-        loader.CACHE_DIR
-        / loader.SUB_DIR
+        loader.DATASET_INFO.dataset_dir
         / software
         / graph_type
         / date
