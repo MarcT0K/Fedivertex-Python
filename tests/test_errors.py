@@ -1,5 +1,4 @@
 from pathlib import Path
-from turtle import clear
 
 import pytest
 
