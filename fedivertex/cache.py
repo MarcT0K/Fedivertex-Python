@@ -35,6 +35,15 @@ class CacheStatus(Enum):
 
 
 def read_last_update(filepath):
+    """Read the last update timestamp from a cache file.
+
+    :param filepath: Path to the file containing the last update timestamp.
+    :type filepath: Path
+    :raises CacheError: if the file content is not a valid ISO datetime.
+    :return: Parsed datetime of the last update.
+    :rtype: datetime
+    """
+
     try:
         with open(filepath, "r", encoding="utf-8") as update_file:
             return datetime.fromisoformat(update_file.read())
@@ -43,6 +52,21 @@ def read_last_update(filepath):
 
 
 class DatasetInfo:
+    """Container for dataset-related paths and metadata.
+
+    This class centralizes all information required to interact with the dataset,
+    including cache locations, download URLs, and last update timestamps.
+
+    :param cache_dir: Root directory for the cache.
+    :type cache_dir: Path
+    :param light_dataset: Whether to use the reduced version of the dataset.
+    :type light_dataset: bool
+    :param cache_only: If True, only local cache is used (no network requests).
+    :type cache_only: bool
+    :raises CacheError: if cache_only=True and no cache is available.
+    :raises DownloadError: if metadata cannot be retrieved from the remote source.
+    """
+
     def __init__(self, cache_dir: Path, light_dataset: bool, cache_only: bool):
         self.cache_root = cache_dir
         self.light_version = light_dataset
@@ -78,6 +102,20 @@ class DatasetInfo:
 
 
 def download_from_http(url: str, filepath: Path):  # Inspired from Croissant ML codebase
+    """Download a file from an HTTP endpoint with progress reporting.
+
+    The file is first written to a temporary location and then atomically
+    renamed to avoid partial or corrupted downloads.
+
+    :param url: URL of the file to download.
+    :type url: str
+    :param filepath: Destination path for the downloaded file.
+    :type filepath: Path
+    :raises requests.RequestException: if the HTTP request fails.
+    :return: None
+    :rtype: None
+    """
+
     response = requests.get(
         url,
         stream=True,
@@ -105,6 +143,14 @@ def download_from_http(url: str, filepath: Path):  # Inspired from Croissant ML 
 
 
 def clear_default_cache():
+    """Remove the entire default cache directory.
+
+    This deletes all cached datasets stored in the default cache location.
+
+    :return: None
+    :rtype: None
+    """
+
     cache_dir = Path(DEFAULT_CACHE_DIR)
 
     if cache_dir.exists():
@@ -112,6 +158,15 @@ def clear_default_cache():
 
 
 def check_for_update(dataset_info: DatasetInfo) -> CacheStatus:
+    """Check whether the local cache is up-to-date with the remote dataset.
+
+    :param dataset_info: Dataset information object.
+    :type dataset_info: DatasetInfo
+    :return: Cache status indicating whether the dataset is up-to-date,
+             outdated, absent, or corrupted.
+    :rtype: CacheStatus
+    """
+
     update_file_path = dataset_info.dataset_dir / "last_update.txt"
 
     if update_file_path.exists():
@@ -123,7 +178,7 @@ def check_for_update(dataset_info: DatasetInfo) -> CacheStatus:
 
         print("Cache found, checking for updates...")
 
-        if last_local_update >= datetime.fromisoformat(dataset_info.last_update):
+        if last_local_update >= dataset_info.last_update:
             print("Cache is up-to-date, no download necessary.")
             return CacheStatus.UPTODATE
         else:
@@ -135,6 +190,19 @@ def check_for_update(dataset_info: DatasetInfo) -> CacheStatus:
 
 
 def download_dataset(dataset_info: DatasetInfo):
+    """Download and extract the dataset into the cache directory.
+
+    The dataset archive is downloaded, extracted, and normalized so that
+    the dataset directory has a stable name independent of versioning.
+
+    :param dataset_info: Dataset information object.
+    :type dataset_info: DatasetInfo
+    :raises requests.RequestException: if the download fails.
+    :raises zipfile.BadZipFile: if the archive is invalid.
+    :return: None
+    :rtype: None
+    """
+
     archive_path = dataset_info.cache_root / "archive.zip"
 
     download_from_http(dataset_info.data_url, archive_path)
@@ -153,15 +221,38 @@ def download_dataset(dataset_info: DatasetInfo):
 
 
 def create_update_date_file(dataset_info: DatasetInfo):
+    """Write the dataset last update timestamp to the cache.
+
+    :param dataset_info: Dataset information object.
+    :type dataset_info: DatasetInfo
+    :return: None
+    :rtype: None
+    """
+
     update_file_path = dataset_info.dataset_dir / "last_update.txt"
 
     with open(update_file_path, "w", encoding="utf-8") as update_file:
-        update_file.write(dataset_info.last_update)
+        update_file.write(dataset_info.last_update.isoformat())
 
 
 def init_cache(
     light_dataset: bool, cache_dir: Optional[Path | str] = None, cache_only=False
 ) -> DatasetInfo:
+    """Initialize dataset cache metadata without downloading data.
+
+    This function prepares the cache directory and returns a DatasetInfo
+    object describing the dataset configuration.
+
+    :param light_dataset: Whether to use the reduced dataset version.
+    :type light_dataset: bool
+    :param cache_dir: Optional custom cache directory.
+    :type cache_dir: Optional[Path | str]
+    :param cache_only: If True, only local cache is used (no network requests).
+    :type cache_only: bool
+    :return: Dataset information object.
+    :rtype: DatasetInfo
+    """
+
     if cache_dir is None:
         cache_dir = DEFAULT_CACHE_DIR
     cache_dir = Path(cache_dir)
@@ -173,6 +264,21 @@ def init_cache(
 def load_dataset(
     light_dataset: bool, cache_dir: Optional[Path | str] = None, cache_only=False
 ) -> DatasetInfo:
+    """Ensure the dataset is available locally and up-to-date.
+
+    This function checks the cache status and downloads the dataset if necessary,
+    unless cache_only is set to True.
+
+    :param light_dataset: Whether to use the reduced dataset version.
+    :type light_dataset: bool
+    :param cache_dir: Optional custom cache directory.
+    :type cache_dir: Optional[Path | str]
+    :param cache_only: If True, only local cache is used (no download allowed).
+    :type cache_only: bool
+    :return: Dataset information object pointing to the local dataset.
+    :rtype: DatasetInfo
+    """
+
     dataset_info = init_cache(light_dataset, cache_dir, cache_only)
 
     if not cache_only:
