@@ -4,7 +4,7 @@ This Python package provides a simple interface to interact with Fedivertex: htt
 Our package automatically downloads the dataset from Kaggle and loads graphs in a usable format (i.e., NetworkX).
 
 The Fediverse Graph dataset provides graphs for different decentralized social media.
-These graphs represents the interactions between servers in these decentralized social media.
+These graphs model the interactions between servers in these decentralized social media.
 The graph type corresponds to the type of interactions modelled by the graph.
 Finally, the dataset provides the graphs obtained on different dates, so the users can analyze the evolution of the interactions.
 
