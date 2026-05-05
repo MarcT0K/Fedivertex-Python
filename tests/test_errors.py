@@ -35,7 +35,7 @@ def test_cache_only_errors():
 
     clear_default_cache()
 
-    assert cache_path.exists()
+    assert not cache_path.exists()
     with pytest.raises(CacheError):  # Missing cache
         _loader = GraphLoader(cache_only=True)
 
