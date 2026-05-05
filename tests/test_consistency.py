@@ -3,20 +3,29 @@ import pytest
 from fedivertex import GraphLoader
 
 
-def _iter_software_graph():
+def test_index_selection():
     loader = GraphLoader()
+
+    assert loader._fetch_date_index("peertube", "follow", 0) == "20250203"
+
+    latest_date = loader._fetch_latest_date("peertube", "follow")
+    assert loader._fetch_date_index("peertube", "follow", -1) == latest_date
+
+
+def _iter_software_graph():
+    loader = GraphLoader(
+        cache_only=True
+    )  # Avoids to fetch the metadata again and again
     for software, graph_types in loader.VALID_GRAPH_TYPES.items():
-        if software == "mastodon":
-            continue
         for graph_type in graph_types:
-            if graph_type == "federation":
+            if software == "mastodon" and graph_type == "federation":
                 continue
             yield software, graph_type
 
 
 @pytest.mark.parametrize("software,graph_type", list(_iter_software_graph()))
 def test_get_graph_selection(software, graph_type):
-    loader = GraphLoader()
+    loader = GraphLoader(cache_only=True)
 
     date = loader._fetch_latest_date(software, graph_type)
 
@@ -51,12 +60,10 @@ def test_get_graph_selection(software, graph_type):
 
 
 def _iter_software_graph_date():
-    loader = GraphLoader()
+    loader = GraphLoader(cache_only=True)
     for software, graph_types in loader.VALID_GRAPH_TYPES.items():
-        if software == "mastodon":
-            continue
         for graph_type in graph_types:
-            if graph_type == "federation":
+            if graph_type == "federation":  # Because we want directed graphs
                 continue
             for date in loader.list_available_dates(software, graph_type):
                 yield software, graph_type, date
@@ -64,7 +71,7 @@ def _iter_software_graph_date():
 
 @pytest.mark.parametrize("software,graph_type,date", list(_iter_software_graph_date()))
 def test_get_graph_sizes(software, graph_type, date):
-    loader = GraphLoader()
+    loader = GraphLoader(cache_only=True)
 
     graph = loader.get_graph(software, graph_type, date=date)
     csv_file = (
@@ -84,7 +91,7 @@ def test_get_graph_sizes(software, graph_type, date):
 
 
 def test_graph_consistency():
-    loader = GraphLoader()
+    loader = GraphLoader(cache_only=True)
 
     # Check graph consistency
     peertube_graph = loader.get_graph("peertube", "follow", date="20250324")
@@ -94,16 +101,16 @@ def test_graph_consistency():
     # Check node attributes
     assert peertube_graph.nodes["aperi[DOT]tube"] == {
         "domain": "tube",
-        "totalUsers": 39,
-        "totalDailyActiveUsers": 0.0,
-        "totalWeeklyActiveUsers": 4.0,
-        "totalMonthlyActiveUsers": 8.0,
-        "totalLocalVideos": 638,
-        "totalVideos": 1287,
-        "totalLocalPlaylists": 26.0,
-        "totalVideoComments": 4632,
-        "totalLocalVideoComments": 44,
-        "totalLocalVideoViews": 106216,
+        "totalUsers": "39",
+        "totalDailyActiveUsers": "0.0",
+        "totalWeeklyActiveUsers": "4.0",
+        "totalMonthlyActiveUsers": "8.0",
+        "totalLocalVideos": "638",
+        "totalVideos": "1287",
+        "totalLocalPlaylists": "26.0",
+        "totalVideoComments": "4632",
+        "totalLocalVideoComments": "44",
+        "totalLocalVideoViews": "106216",
         "serverVersion": "7.1.0",
     }
 

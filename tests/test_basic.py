@@ -39,15 +39,6 @@ def test_available_dates():
     assert loader._fetch_latest_date("peertube", "follow") == peertube_dates[-1]
 
 
-def test_index_selection():
-    loader = GraphLoader()
-
-    assert loader._fetch_date_index("peertube", "follow", 0) == "20250203"
-
-    latest_date = loader._fetch_latest_date("peertube", "follow")
-    assert loader._fetch_date_index("peertube", "follow", -1) == latest_date
-
-
 def test_get_temporal_graph():
     loader = GraphLoader()
 

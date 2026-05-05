@@ -10,7 +10,7 @@ import requests
 from platformdirs import user_cache_dir
 from tqdm import tqdm
 
-from .exceptions import DownloadError
+from .exceptions import CacheError, DownloadError
 
 _CHUNK_SIZE = 1024 * 1024
 
@@ -34,8 +34,16 @@ class CacheStatus(Enum):
     UPTODATE = 1
 
 
+def read_last_update(filepath):
+    try:
+        with open(filepath, "r", encoding="utf-8") as update_file:
+            return datetime.fromisoformat(update_file.read())
+    except ValueError:
+        raise CacheError("Cache corrupted (invalid update date), download necessary.")
+
+
 class DatasetInfo:
-    def __init__(self, cache_dir: Path, light_dataset: bool):
+    def __init__(self, cache_dir: Path, light_dataset: bool, cache_only: bool):
         self.cache_root = cache_dir
         self.light_version = light_dataset
         self.dataset_dir = cache_dir / ("reduced" if self.light_version else "full")
@@ -44,22 +52,29 @@ class DatasetInfo:
         )
         self.data_url = LIGHT_DATASET_URL if self.light_version else DATASET_URL
 
-        try:
-            resp = requests.get(metadata_url, timeout=10)
-            if resp.status_code != 200:
+        if cache_only:
+            last_update_file = self.dataset_dir / "last_update.txt"
+            if last_update_file.exists():
+                self.last_update = read_last_update(last_update_file)
+            else:
+                raise CacheError("No cache found... incompatible with cache_only=True")
+        else:
+            try:
+                resp = requests.get(metadata_url, timeout=10)
+                if resp.status_code != 200:
+                    raise DownloadError(
+                        f"Could not retrieve dataset metadata (Invalid status {resp.status_code})"
+                    )
+                metadata = resp.json()
+                self.last_update = metadata["dateModified"]
+            except requests.RequestException as err:
                 raise DownloadError(
-                    f"Could not retrieve dataset metadata (Invalid status {resp.status_code})"
-                )
-            metadata = resp.json()
-            self.last_update = metadata["dateModified"]
-        except requests.RequestException as err:
-            raise DownloadError(
-                f"Could not retrieve dataset metadata ({str(err)})"
-            ) from err
-        except KeyError as err:
-            raise DownloadError(
-                "Could not retrieve dataset metadata (Missing 'dateModified' in the metadata)"
-            ) from err
+                    f"Could not retrieve dataset metadata ({str(err)})"
+                ) from err
+            except KeyError as err:
+                raise DownloadError(
+                    "Could not retrieve dataset metadata (Missing 'dateModified' in the metadata)"
+                ) from err
 
 
 def download_from_http(url: str, filepath: Path):  # Inspired from Croissant ML codebase
@@ -101,10 +116,9 @@ def check_for_update(dataset_info: DatasetInfo) -> CacheStatus:
 
     if update_file_path.exists():
         try:
-            with open(update_file_path, "r", encoding="utf-8") as update_file:
-                last_local_update = datetime.fromisoformat(update_file.read())
-        except ValueError:
-            print("Cache corrupted (invalid update date), download necessary.")
+            last_local_update = read_last_update(update_file_path)
+        except CacheError as err:
+            print(str(err))
             return CacheStatus.CORRUPTED
 
         print("Cache found, checking for updates...")
@@ -146,28 +160,29 @@ def create_update_date_file(dataset_info: DatasetInfo):
 
 
 def init_cache(
-    light_dataset: bool, cache_dir: Optional[Path | str] = None
+    light_dataset: bool, cache_dir: Optional[Path | str] = None, cache_only=False
 ) -> DatasetInfo:
     if cache_dir is None:
         cache_dir = DEFAULT_CACHE_DIR
     cache_dir = Path(cache_dir)
     # Create the main cache directory if necessary
     os.makedirs(cache_dir, exist_ok=True)
-    return DatasetInfo(cache_dir, light_dataset)
+    return DatasetInfo(cache_dir, light_dataset, cache_only)
 
 
 def load_dataset(
-    light_dataset: bool, cache_dir: Optional[Path | str] = None
+    light_dataset: bool, cache_dir: Optional[Path | str] = None, cache_only=False
 ) -> DatasetInfo:
-    dataset_info = init_cache(light_dataset, cache_dir)
+    dataset_info = init_cache(light_dataset, cache_dir, cache_only)
 
-    cache_status = check_for_update(dataset_info)
-    if cache_status != CacheStatus.UPTODATE:
-        if dataset_info.dataset_dir.exists():
-            shutil.rmtree(dataset_info.dataset_dir)
+    if not cache_only:
+        cache_status = check_for_update(dataset_info)
+        if cache_status != CacheStatus.UPTODATE:
+            if dataset_info.dataset_dir.exists():
+                shutil.rmtree(dataset_info.dataset_dir)
 
-        download_dataset(dataset_info)
+            download_dataset(dataset_info)
 
-        create_update_date_file(dataset_info)
+            create_update_date_file(dataset_info)
 
     return dataset_info

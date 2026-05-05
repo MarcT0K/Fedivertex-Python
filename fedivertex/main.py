@@ -29,8 +29,8 @@ class GraphLoader:
     }
     UNDIRECTED_GRAPHS = ["federation"]
 
-    def __init__(self, light_version=True, cache_dir=None):
-        self.DATASET_INFO = load_dataset(light_version, cache_dir)
+    def __init__(self, light_version=True, cache_dir=None, cache_only=False):
+        self.DATASET_INFO = load_dataset(light_version, cache_dir, cache_only)
 
     def _graph_dir(self, software: str, graph_type: str, date: str) -> Path:
         return self.DATASET_INFO.dataset_dir / software / graph_type / date

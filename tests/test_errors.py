@@ -1,7 +1,11 @@
+from pathlib import Path
+from turtle import clear
+
 import pytest
 
 from fedivertex import GraphLoader
-from fedivertex.exceptions import InteractionError
+from fedivertex.cache import DEFAULT_CACHE_DIR, clear_default_cache
+from fedivertex.exceptions import CacheError, InteractionError
 
 
 def test_list_error():
@@ -9,6 +13,31 @@ def test_list_error():
 
     with pytest.raises(InteractionError):
         loader.list_graph_types("NON-EXISTING SOFTWARE")
+
+
+def test_cache_only_errors():
+    cache_path = Path(DEFAULT_CACHE_DIR)
+    assert cache_path.exists()
+    loader = GraphLoader(cache_only=True)
+    # No error because the cache exists
+
+    # Cache corruption
+    update_file_path = loader.DATASET_INFO.dataset_dir / "last_update.txt"
+    update_file_path.unlink()
+    with open(update_file_path, "w") as update_file:
+        update_file.write("INVALID DATA")
+
+    del loader
+
+    assert cache_path.exists()
+    with pytest.raises(CacheError):  # Corrupted cache
+        _loader = GraphLoader(cache_only=True)
+
+    clear_default_cache()
+
+    assert cache_path.exists()
+    with pytest.raises(CacheError):  # Missing cache
+        _loader = GraphLoader(cache_only=True)
 
 
 def test_index_selection_error():
