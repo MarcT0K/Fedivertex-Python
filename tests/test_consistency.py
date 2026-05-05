@@ -13,9 +13,7 @@ def test_index_selection():
 
 
 def _iter_software_graph():
-    loader = GraphLoader(
-        cache_only=True
-    )  # Avoids to fetch the metadata again and again
+    loader = GraphLoader()
     for software, graph_types in loader.VALID_GRAPH_TYPES.items():
         for graph_type in graph_types:
             if software == "mastodon" and graph_type == "federation":
@@ -25,7 +23,9 @@ def _iter_software_graph():
 
 @pytest.mark.parametrize("software,graph_type", list(_iter_software_graph()))
 def test_get_graph_selection(software, graph_type):
-    loader = GraphLoader(cache_only=True)
+    loader = GraphLoader(
+        cache_only=True
+    )  # Avoids to fetch the metadata again and again
 
     date = loader._fetch_latest_date(software, graph_type)
 
