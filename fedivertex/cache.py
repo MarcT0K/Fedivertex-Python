@@ -46,7 +46,7 @@ def read_last_update(filepath):
 
     try:
         with open(filepath, "r", encoding="utf-8") as update_file:
-            return datetime.fromisoformat(update_file.read())
+            return update_file.read()
     except ValueError:
         raise CacheError("Cache corrupted (invalid update date), download necessary.")
 
@@ -171,14 +171,16 @@ def check_for_update(dataset_info: DatasetInfo) -> CacheStatus:
 
     if update_file_path.exists():
         try:
-            last_local_update = read_last_update(update_file_path)
+            last_local_update = datetime.fromisoformat(
+                read_last_update(update_file_path)
+            )
         except CacheError as err:
             print(str(err))
             return CacheStatus.CORRUPTED
 
         print("Cache found, checking for updates...")
 
-        if last_local_update >= dataset_info.last_update:
+        if last_local_update >= datetime.fromisoformat(dataset_info.last_update):
             print("Cache is up-to-date, no download necessary.")
             return CacheStatus.UPTODATE
         else:
@@ -232,7 +234,7 @@ def create_update_date_file(dataset_info: DatasetInfo):
     update_file_path = dataset_info.dataset_dir / "last_update.txt"
 
     with open(update_file_path, "w", encoding="utf-8") as update_file:
-        update_file.write(dataset_info.last_update.isoformat())
+        update_file.write(dataset_info.last_update)
 
 
 def init_cache(
