@@ -7,7 +7,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="fedivertex",
-    version="1.1.0",
+    version="1.1.1",
     author="Marc DAMIE",
     author_email="marc.damie@inria.fr",
     description="Interface to download and interact with Fedivertex, the Fediverse Graph Dataset",
@@ -17,7 +17,6 @@ setup(
     license="GPLv3",
     python_requires=">=3.10",
     install_requires=[
-        "numpy<2.0",  # Necessary for networkx-temporal
         "networkx",
         "networkx-temporal",
         "platformdirs",
